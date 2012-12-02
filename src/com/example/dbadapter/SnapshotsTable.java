@@ -20,7 +20,7 @@ public class SnapshotsTable extends DBTable {
 	static List<Field> FIELDS = Arrays.asList(
     		new Field("date",			Date.class,		true),		// The date/time this information was recorded
     		new Field("anchorMAC",		String.class,	false),		// Interface MAC
-    		new Field("MAC",			Integer.class,	false),		// The interface that this data is for
+    		new Field("MAC",			String.class,	false),		// The interface that this data is for
     		new Field("RSSI",			Integer.class,	false)		// The RSSI of the interface specified by ifaceKey
     		);	// "anchor" is a key from an interface
 		
