@@ -271,7 +271,7 @@ abstract public class DBTable {
     	}
     	return true;
     }
-    
+        
     public boolean insert(Object o) {
     	DBTable table = this;
     	ArrayList<ContentValues> insertions = table.getInsertContentValues(o);

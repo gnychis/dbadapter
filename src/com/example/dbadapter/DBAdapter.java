@@ -31,6 +31,12 @@ public class DBAdapter {
     private static final String DATABASE_NAME = "awmon";
     private static final int DATABASE_VERSION = 1;
     
+    public enum NameUpdate {
+    	DO_NOT_UPDATE,	// Leave the naming alone
+    	SAFE_UPDATE,	// Update the name if it is stored as null
+    	UPDATE,			// Overwrite the name, regardless
+    }
+    
     HashMap<String,DBTable> _tables;
     
     void populateTables() {
@@ -93,20 +99,40 @@ public class DBAdapter {
     //******* DEVICE *************** WRITE HELPER FUNCTIONS ****************************//
     /** Stores the given device in the database, this will either insert or update it.
      * @param d the Device to be inserted/updated.
+     * @param nameUpdate this is whether or not the deviceName should be updated.  Interface names
+     * will not change.
      */
-    public void storeDevice(Device d) {
-    	updateDevice(d);
+    public void storeDevice(Device d, NameUpdate nameUpdate) {
+    	updateDevice(d, nameUpdate);
     }
     
     /** Updates the specified device in the database, inserting it if it doesn't exist.
      * @param d the device to be updated/inserted.
+     * @nameUpdate this specifies whether the device name should be updated.  This does NOT touch
+     * interface names.  If you want to update interface names, you should call updateInterfaces(device.getInterfaces(), BLAH).
      */
-    public void updateDevice(Device d) {
+    public void updateDevice(Device d, NameUpdate nameUpdate) {
     	Device exists = getDevice(d.getKey());
     	
     	if(exists==null) {		// If it doesn't exist, just insert it
     		_tables.get(DevicesTable.TABLE_NAME).insert(d);
     	} else {  	
+    		
+    		switch(nameUpdate) {
+    			case UPDATE:			// If we are updating the device name, do not do anything.
+    				break;
+    				
+    			case DO_NOT_UPDATE:		// If not updating the name, use the one from the database
+    				d.setUserName(exists.getUserName());
+    				break;
+    				
+    			case SAFE_UPDATE:		// If playing it safe, only update it if its null
+    				if(exists.getUserName()!=null)
+    					d.setUserName(exists.getUserName());
+    				break;
+    		}
+    		
+    		
 	    	// We never ever want to accidentally overwrite the key of a device
 	    	// in the database with another key.  So, make sure to overwrite it.
 	    	d.setKey(exists.getKey());
@@ -115,7 +141,7 @@ public class DBAdapter {
     	
     	// Now, we need to take care of all interfaces
     	for(Interface i : d.getInterfaces()) {
-    		storeInterface(i);	// This will insert it, or update it.
+    		storeInterface(i, NameUpdate.DO_NOT_UPDATE);		// This will insert it, or update it.
     		associateInterfaceWithDevice(i._MAC, d.getKey());
     	}
     }
@@ -124,9 +150,9 @@ public class DBAdapter {
      * them if they do not exists, and updates them if they do.
      * @param devices the devices to insert/update
      */
-    public void updateDevices(ArrayList<Device> devices) {
+    public void updateDevices(ArrayList<Device> devices, NameUpdate nameUpdate) {
     	for(Device d : devices)
-    		updateDevice(d);
+    		updateDevice(d, nameUpdate);
     }
     
     
@@ -229,11 +255,12 @@ public class DBAdapter {
     //****** INTERFACE *********** WRITE HELPER FUNCTIONS ****************************//
     
     /** This will insert the interface if it doesn't exist, and will update it if it does
-     * exist.  
+     * exist.  Must specify whether the interface name should be updated if it does exist.
      * @param i
+     * @param nameUpdate this is whether or not the name should be updated for the interface
      */
-    public void storeInterface(Interface i) {
-    	updateInterface(i);
+    public void storeInterface(Interface i, NameUpdate nameUpdate) {
+    	updateInterface(i, nameUpdate);
     }
     
     /** Unlike storeInterface, this will only insert it if it doesn't yet exist.
@@ -242,7 +269,7 @@ public class DBAdapter {
      */
     public boolean insertInterface(Interface i) {
     	if(getInterface(i._MAC)==null) {
-    		storeInterface(i);
+    		storeInterface(i, NameUpdate.UPDATE);
     		return true;
     	}
     	return false;
@@ -261,7 +288,7 @@ public class DBAdapter {
      * if it doesn't yet exist.
      * @param i	the Interface to update or insert.
      */
-    public void updateInterface(Interface i) {
+    public void updateInterface(Interface i, NameUpdate nameUpdate) {
     	Interface existing = getInterface(i._MAC);
     	
     	if(existing==null) {		// If it doesn't exist, just insert it
@@ -273,7 +300,23 @@ public class DBAdapter {
     		return;
     	}
     	
-    	// If we get to this point, the Interface must exist, let's update it
+    	// If we get to this point, the Interface must exist, let's update it.
+    	// First, we must mangle the name appropriately.
+    	switch(nameUpdate) {
+    		case UPDATE:		// If the case is to update it, we leave it alone and allow the overwrite
+    			break;
+    		
+    		case DO_NOT_UPDATE:	// If we do not want to update it, we pull the name in from the database instance
+    			i._ifaceName = existing._ifaceName;
+    			break;
+    			
+    		case SAFE_UPDATE:	// Safe updates mean to save the name only if one didn't exist
+    			if(existing._ifaceName != null)
+    				i._ifaceName = existing._ifaceName;
+    			break;    				
+    	}
+    	
+    	// Now that we've manged names, now we can actually update the interface
     	_tables.get(InterfacesTable.TABLE_NAME).update(i);
     
     	// Now, if the interface that was passed to us is Wireless and it is stored as
@@ -307,12 +350,12 @@ public class DBAdapter {
     	// NOT downgrade wireless to wired.
     }
     
-    /** Given a set of interfaces, update them in the data.
+    /** Given a set of interfaces, update them in the data.  We play it safe with naming in this case.
      * @param interfaces
      */
-    public void updateInterfaces(ArrayList<Interface> interfaces) {
+    public void updateInterfaces(ArrayList<Interface> interfaces, NameUpdate nameUpdate) {
     	for(Interface iface : interfaces)
-    		updateInterface(iface);
+    		updateInterface(iface, nameUpdate);
     }
     
     //******* INTERFACE *************** DELETE HELPER FUNCTIONS ****************************//
