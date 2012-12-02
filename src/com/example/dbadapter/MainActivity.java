@@ -32,6 +32,30 @@ public class MainActivity extends Activity {
         Log.d("DBTests", "Device/Interface Association: " + testDeviceAssociation());
         Log.d("DBTests", "Devices: " + testDevices());
         Log.d("DBTests", "Snapshots: " + testSnapshots());
+        Log.d("DBTests", "Morphing: " + testMorphing());
+    }
+    
+    boolean testMorphing() {
+    	Interface i1 = new Interface();
+    	i1._MAC="morphme";
+    	i1._IP="192.168.2.1";
+    	i1._ouiName="morph OUI";
+    	
+    	dbAdapter.storeInterface(i1);
+    	
+    	// Upgrade it to a wireless interface and make sure it is stored as a wireless interface
+    	WirelessInterface w1 = new WirelessInterface(i1);
+    	dbAdapter.updateInterface(w1);
+    	if(dbAdapter.getInterface(i1._MAC).getClass() != WirelessInterface.class)
+    		return false;
+    	
+    	// Make it a wired interface and make sure it is still stored as a wired interface
+    	WiredInterface wired1 = new WiredInterface(i1);
+    	dbAdapter.updateInterface(wired1);
+    	if(dbAdapter.getInterface(i1._MAC).getClass() != WirelessInterface.class)
+    		return false;
+    	
+    	return true;
     }
     
     boolean testSnapshots() {

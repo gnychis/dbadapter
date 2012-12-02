@@ -262,9 +262,9 @@ public class DBAdapter {
      * @param i	the Interface to update or insert.
      */
     public void updateInterface(Interface i) {
-    	Interface exists = getInterface(i._MAC);
+    	Interface existing = getInterface(i._MAC);
     	
-    	if(exists==null) {		// If it doesn't exist, just insert it
+    	if(existing==null) {		// If it doesn't exist, just insert it
     		_tables.get(InterfacesTable.TABLE_NAME).insert(i);
     		if(i.getClass()==WirelessInterface.class)
     			_tables.get(WirelessIfaceTable.TABLE_NAME).insert(i);
@@ -273,15 +273,38 @@ public class DBAdapter {
     		return;
     	}
     	
-    	// We never ever want to accidentally overwrite the key of an interface
-    	// in the database with another key.  So, make sure to overwrite it.
-    	i.setKey(exists.getKey());
+    	// If we get to this point, the Interface must exist, let's update it
     	_tables.get(InterfacesTable.TABLE_NAME).update(i);
+    
+    	// Now, if the interface that was passed to us is Wireless and it is stored as
+    	// a raw Interface, then let's insert the wireless data
+    	if(i.getClass()==WirelessInterface.class && existing.getClass()==Interface.class) {
+    		_tables.get(WirelessIfaceTable.TABLE_NAME).insert(i);
+    		return;
+    	}
     	
-    	if(i.getClass()==WirelessInterface.class)
+    	// If the existing interface was a WiredInterface, and the one that was passed was
+    	// a WirelessInterface, we upgrade it!
+    	if(i.getClass()==WirelessInterface.class && existing.getClass()==WiredInterface.class) {
+    		_tables.get(WirelessIfaceTable.TABLE_NAME).insert(i);
+    		removeWiredData(i._MAC);
+    		return;
+    	}
+    	
+    	// If the Interface passed was wireless, and it is a wireless interface, then we also update that
+    	if(i.getClass()==WirelessInterface.class && existing.getClass()==WirelessInterface.class) {
     		_tables.get(WirelessIfaceTable.TABLE_NAME).update(i);
-    	if(i.getClass()==WiredInterface.class)
+    		return;
+    	}
+    	
+    	// If the Interface passed was wired, and it is stored as wired, we update that
+    	if(i.getClass()==WiredInterface.class && existing.getClass()==WiredInterface.class) {
     		_tables.get(WiredIfaceTable.TABLE_NAME).update(i);
+    		return;
+    	}
+    	
+    	// Note that if the interface passed was wired, and it is stored as a wireless interface, we do
+    	// NOT downgrade wireless to wired.
     }
     
     /** Given a set of interfaces, update them in the data.
@@ -294,6 +317,13 @@ public class DBAdapter {
     
     //******* INTERFACE *************** DELETE HELPER FUNCTIONS ****************************//
     // YOU CANNOT DELETE INTERFACES!!  This could break snapshots.
+    public boolean removeWiredData(String MAC) {
+    	if(MAC==null)
+    		return false;
+    	ContentValues conditions = new ContentValues();
+    	conditions.put("MAC", MAC);
+    	return _tables.get(WiredIfaceTable.TABLE_NAME).delete(conditions);	
+    }
     
     //******* INTERFACE ********** READ HELPER FUNCTIONS ****************************//
     /** Given a MAC address, return an Interface, WiredInterface, or WirelessInterface
