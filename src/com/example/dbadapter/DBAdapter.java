@@ -296,91 +296,64 @@ public class DBAdapter {
     // YOU CANNOT DELETE INTERFACES!!  This could break snapshots.
     
     //******* INTERFACE ********** READ HELPER FUNCTIONS ****************************//
-    /** This is mainly a helper function which allows you to get an ifaceKey given a MAC
-     * address.
-     * @param MAC the MAC address the interface must match
-     * @return the ifaceKey of the given interface with MAC address
-     */
-    private int getInterfaceKeyFromMAC(String MAC) {
-    	ContentValues conditions = new ContentValues();
-    	conditions.put("MAC", MAC);
-    	for(Object o : _tables.get(InterfacesTable.TABLE_NAME).retrieve(conditions))
-    		return ((Interface)o).getKey();
-    	throw new SQLException("Could not find ifaceKey");
-    }
-    
     /** Given a MAC address, return an Interface, WiredInterface, or WirelessInterface
      * which matches this MAC address.
      * @param MAC the given MAC address it must match
      * @return an Interface which can be either WirelessInterface or WiredInterface, also
      */
     public Interface getInterface(String MAC) {
-    	int ifaceKey;
-    	// First, get the interface key
-    	try {
-    		ifaceKey = getInterfaceKeyFromMAC(MAC);
-    	} catch(Exception e) {
-    		Log.e(TAG, "Could not get interface key", e);
+    	Interface iface=getRawInterface(MAC);
+    	if(iface==null)
     		return null;
-    	}
-    	return getInterface(ifaceKey);
-    }
-    
-    /** Given an interface key, return an Interface which will actually be a
-     * WirelessInterface, WiredInterface, or Interface depending on its type. This
-     * is the most top-level and rich function.
-     * @param ifaceKey must match this key
-     * @return a WirelessInterface, WiredInterface, Interface or null.
-     */
-    public Interface getInterface(int ifaceKey) {
+    	
     	// If it's a wireless interface, go ahead and return that.
-    	WirelessInterface wiface = getWirelessInterfaceFromKey(ifaceKey);
+    	WirelessInterface wiface = getWirelessInterface(iface._MAC);
     	if(wiface!=null)
     		return wiface;
     	
     	// If it's a wired interface, go ahead and return that
-    	WiredInterface wiredface = getWiredInterfaceFromKey(ifaceKey);
+    	WiredInterface wiredface = getWiredInterface(iface._MAC);
     	if(wiredface!=null)
     		return wiredface;
     	
-    	return getInterfaceFromKey(ifaceKey);
+    	return iface;
     }
     
-    /** Gets the parent Interface class representation of an interface with the
-     * specified key.
-     * @param ifaceKey the key the interface must match
-     * @return an Interface if one existed with the associated ifaceKey
+    /** This will return the raw superclass Interface, and will NOT return a WiredInterface
+     * or a WirelessInterface.  This should really only be used internally.
+     * @param MAC
+     * @return
      */
-    public Interface getInterfaceFromKey(int ifaceKey) {
+    public Interface getRawInterface(String MAC) {
     	ContentValues conditions = new ContentValues();
-    	conditions.put("ifaceKey", ifaceKey);
-    	for(Object o : _tables.get(InterfacesTable.TABLE_NAME).retrieve(conditions))
+    	conditions.put("MAC", MAC);
+    	for(Object o : _tables.get(InterfacesTable.TABLE_NAME).retrieve(conditions)) 
     		return (Interface)o;
     	return null;
     }
 
-    /** Given a specific interface key, return a wired interface *if* there is a
+    /** Given a specific interface MAC, return a wired interface *if* there is a
      * wired interface associated with this key.
-     * @param ifaceKey the interface key
+     * @param MAC the interface MAC
      * @return a WiredInterface if there was one associated with this key, null otherwise.
      */
-    private WiredInterface getWiredInterfaceFromKey(int ifaceKey) {
+    private WiredInterface getWiredInterface(String MAC) {
     	ContentValues conditions = new ContentValues();
-    	conditions.put("ifaceKey", ifaceKey);
+    	conditions.put("MAC", MAC);
     	for(Object o : _tables.get(WiredIfaceTable.TABLE_NAME).retrieve(conditions))
     		return (WiredInterface)o;
     	return null;
     }
     
-    /** Given a specific interface key, return a wireless interface *if* there
+    /** Given a specific inter MMAC, return a wireless interface *if* there
      * is a wireless interface associated with this key.
-     * @param ifaceKey the interface key
+     * @param MAC the MAC of the interface
      * @return a WirelessInterface if there was one associated with this key, null
      * otherwise.
      */
-    private WirelessInterface getWirelessInterfaceFromKey(int ifaceKey) {
+    private WirelessInterface getWirelessInterface(String MAC) {
     	ContentValues conditions = new ContentValues();
-    	conditions.put("ifaceKey", ifaceKey);
+    	conditions.put("MAC", MAC);
     	for(Object o : _tables.get(WirelessIfaceTable.TABLE_NAME).retrieve(conditions))
     		return (WirelessInterface)o;
     	return null;
@@ -420,7 +393,7 @@ public class DBAdapter {
     public ArrayList<Interface> getInterfaces(ContentValues conditions) {
     	ArrayList<Interface> interfaces = new ArrayList<Interface>();
     	for(Object o : _tables.get(InterfacesTable.TABLE_NAME).retrieve(conditions))
-    		interfaces.add(getInterface(((Interface)o).getKey()));
+    		interfaces.add(getInterface(((Interface)o)._MAC));
     	return interfaces;
     }
     

@@ -316,7 +316,7 @@ public class MainActivity extends Activity {
         if(i.equals(i2))
         	return false;
         
-        Interface i3 = dbAdapter.getInterface(i.getKey());
+        Interface i3 = dbAdapter.getInterface(i._MAC);
         
         if(!i3.equals(i))
         	return false;
