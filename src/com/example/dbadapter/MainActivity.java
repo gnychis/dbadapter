@@ -132,6 +132,7 @@ public class MainActivity extends Activity {
         i2.addRSSI(-45);
         i2.addRSSI(-60);
         
+        try { Thread.sleep(1000); } catch(Exception e) {}
         Snapshot s3 = new Snapshot();
         s3.add(i2);
         s3.add(i1);
@@ -147,6 +148,7 @@ public class MainActivity extends Activity {
         if(s4.getInterfaces().size()!=2)
         	return false;
        
+        try { Thread.sleep(1000); } catch(Exception e) {}
         Snapshot s5 = new Snapshot();
         
         dbAdapter.storeSnapshot(s5);
